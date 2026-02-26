@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -17,13 +18,23 @@ export default function Home() {
   const docRef = useMemoFirebase(() => (db ? doc(db, 'portfolios', 'user-portfolio') : null), [db]);
   const { data: remoteData, loading: isDocLoading } = useDoc<PortfolioData>(docRef);
 
-  // Load data from Firestore once on mount
+  // Load data from Firestore once on mount with deep merging to ensure all keys exist
   useEffect(() => {
     if (!isDocLoading && remoteData && !isInitialized) {
-      setPortfolioData(remoteData);
+      const mergedData: PortfolioData = {
+        ...initialPortfolioData,
+        ...remoteData,
+        aboutMe: { ...initialPortfolioData.aboutMe, ...(remoteData.aboutMe || {}) },
+        skills: { ...initialPortfolioData.skills, ...(remoteData.skills || {}) },
+        contact: { ...initialPortfolioData.contact, ...(remoteData.contact || {}) },
+        education: remoteData.education || [],
+        certifications: remoteData.certifications || [],
+        experience: remoteData.experience || [],
+        projects: remoteData.projects || [],
+      };
+      setPortfolioData(mergedData);
       setIsInitialized(true);
     } else if (!isDocLoading && !remoteData && !isInitialized) {
-      // If no document exists yet, we're initialized with initial data
       setIsInitialized(true);
     }
   }, [remoteData, isDocLoading, isInitialized]);

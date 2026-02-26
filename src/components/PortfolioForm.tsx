@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useCallback, useRef } from 'react';
@@ -77,6 +78,12 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
     const updateData = { [sectionKey]: data[sectionKey] };
 
     setDoc(docRef, updateData, { merge: true })
+      .then(() => {
+        toast({
+          title: `${sectionName} Saved`,
+          description: "Changes captured to cloud.",
+        });
+      })
       .catch(async (error) => {
         const permissionError = new FirestorePermissionError({
           path: docRef.path,
@@ -85,11 +92,6 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
         });
         errorEmitter.emit('permission-error', permissionError);
       });
-
-    toast({
-      title: `${sectionName} Saved`,
-      description: "Changes captured to cloud.",
-    });
   };
 
   const handleGenerateAboutMe = async () => {
@@ -140,7 +142,7 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
           keyResponsibilities: exp.responsibilities,
           keyAchievementOrOutcome: exp.achievement,
         })),
-        projects: data.projects.map(proj => ({
+        projects: (data.projects || []).map(proj => ({
           projectTitle: proj.title,
           projectPurposeProblemSolved: proj.description,
           toolsOrTechnologiesUsed: proj.technologies,
@@ -155,7 +157,7 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
         refinedAchievement: result.refinedWorkExperiences[idx]?.refinedAchievementOrOutcome,
       }));
 
-      const updatedProj = data.projects.map((proj, idx) => ({
+      const updatedProj = (data.projects || []).map((proj, idx) => ({
         ...proj,
         refinedDescription: result.refinedProjects[idx]?.refinedProjectDescription,
       }));
@@ -185,11 +187,14 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
   };
 
   const addItem = (section: 'education' | 'certifications' | 'experience' | 'projects') => {
-    const newItems = [...(data[section] || [])];
+    const currentItems = data[section] || [];
+    const newItems = [...currentItems];
     const id = Date.now().toString();
+    
     if (section === 'education') newItems.push({ id, degreeName: '', institutionName: '', completionDate: '', coursework: '' });
     else if (section === 'experience') newItems.push({ id, jobTitle: '', organization: '', dates: '', responsibilities: '', achievement: '' });
     else if (section === 'projects') newItems.push({ id, title: '', description: '', technologies: '', skills: '', link: '' });
+    else if (section === 'certifications') newItems.push({ id, name: '', organization: '', year: '' });
     
     const newData = { ...data, [section]: newItems };
     onChange(newData);
@@ -197,13 +202,15 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
   };
 
   const removeItem = (section: 'education' | 'certifications' | 'experience' | 'projects', id: string) => {
-    const newData = { ...data, [section]: data[section].filter((item: any) => item.id !== id) };
+    const currentItems = data[section] || [];
+    const newData = { ...data, [section]: currentItems.filter((item: any) => item.id !== id) };
     onChange(newData);
     debouncedAutoSave(newData);
   };
 
   const updateItem = (section: 'education' | 'certifications' | 'experience' | 'projects', id: string, field: string, value: any) => {
-    const newItems = (data[section] || []).map((item: any) => item.id === id ? { ...item, [field]: value } : item);
+    const currentItems = data[section] || [];
+    const newItems = currentItems.map((item: any) => item.id === id ? { ...item, [field]: value } : item);
     const newData = { ...data, [section]: newItems };
     onChange(newData);
     debouncedAutoSave(newData);
@@ -328,7 +335,7 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
             </div>
           </AccordionTrigger>
           <AccordionContent className="space-y-6 pt-4 pb-6">
-            {data.education.map((edu) => (
+            {(data.education || []).map((edu) => (
               <Card key={edu.id} className="relative group border-primary/10">
                 <Button 
                   variant="ghost" size="icon" 
@@ -391,7 +398,7 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
             </div>
           </AccordionTrigger>
           <AccordionContent className="space-y-6 pt-4 pb-6">
-            {data.experience.map((exp) => (
+            {(data.experience || []).map((exp) => (
               <Card key={exp.id} className="relative group border-primary/10">
                 <Button 
                   variant="ghost" size="icon" 
@@ -448,7 +455,7 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
             </div>
           </AccordionTrigger>
           <AccordionContent className="space-y-6 pt-4 pb-6">
-            {data.projects && data.projects.map((proj) => (
+            {(data.projects || []).map((proj) => (
               <Card key={proj.id} className="relative group border-accent/20">
                 <Button 
                   variant="ghost" size="icon" 
@@ -512,7 +519,7 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
                 <label className="text-sm font-medium">Technical Skills (Comma separated)</label>
                 <Textarea 
                   placeholder="e.g. Python, Machine Learning, Quickbooks" 
-                  value={data.skills.technical.join(', ')}
+                  value={(data.skills.technical || []).join(', ')}
                   onChange={(e) => updateField('skills', 'technical', e.target.value.split(',').map(s => s.trim()).filter(s => s))}
                 />
               </div>
@@ -520,7 +527,7 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
                 <label className="text-sm font-medium">Tools & Technologies</label>
                 <Textarea 
                   placeholder="e.g. Excel, Docker, SAP" 
-                  value={data.skills.tools.join(', ')}
+                  value={(data.skills.tools || []).join(', ')}
                   onChange={(e) => updateField('skills', 'tools', e.target.value.split(',').map(s => s.trim()).filter(s => s))}
                 />
               </div>
@@ -528,7 +535,7 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
                 <label className="text-sm font-medium">Professional / Soft Skills</label>
                 <Textarea 
                   placeholder="e.g. Leadership, Team Motivation" 
-                  value={data.skills.soft.join(', ')}
+                  value={(data.skills.soft || []).join(', ')}
                   onChange={(e) => updateField('skills', 'soft', e.target.value.split(',').map(s => s.trim()).filter(s => s))}
                 />
               </div>
@@ -583,6 +590,13 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
         >
           {isRefiningExperience ? <Sparkles className="animate-pulse" /> : <Sparkles size={20} />}
           {isRefiningExperience ? "Refining Content..." : "AI Refine All Content"}
+        </Button>
+        <Button 
+          variant="outline"
+          onClick={() => handleManualSave('All Content', 'aboutMe' as any)}
+          className="bg-card shadow-xl py-6 rounded-xl font-bold text-base gap-2 px-6"
+        >
+          <Save size={20} />
         </Button>
       </div>
     </div>
