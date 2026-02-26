@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useRef } from 'react';
 import { 
-  User, GraduationCap, Award, Briefcase, 
+  User, GraduationCap, Briefcase, 
   Code2, FolderGit2, Mail, Sparkles, Plus, Trash2, 
   CheckCircle2, Wand2, Save, CloudUpload, Check
 } from 'lucide-react';
@@ -34,7 +34,6 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Debounced auto-save function
   const debouncedAutoSave = useCallback((newData: PortfolioData) => {
     setIsAutoSaving(true);
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -56,7 +55,7 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
           });
           errorEmitter.emit('permission-error', permissionError);
         });
-    }, 1500); // Save 1.5 seconds after the user stops typing
+    }, 1500);
   }, [db]);
 
   const updateField = (section: keyof PortfolioData, field: string, value: any) => {
@@ -186,10 +185,9 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
   };
 
   const addItem = (section: 'education' | 'certifications' | 'experience' | 'projects') => {
-    const newItems = [...data[section]];
+    const newItems = [...(data[section] || [])];
     const id = Date.now().toString();
     if (section === 'education') newItems.push({ id, degreeName: '', institutionName: '', completionDate: '', coursework: '' });
-    else if (section === 'certifications') newItems.push({ id, name: '', organization: '', year: '', url: '' });
     else if (section === 'experience') newItems.push({ id, jobTitle: '', organization: '', dates: '', responsibilities: '', achievement: '' });
     else if (section === 'projects') newItems.push({ id, title: '', description: '', technologies: '', skills: '', link: '' });
     
@@ -205,7 +203,7 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
   };
 
   const updateItem = (section: 'education' | 'certifications' | 'experience' | 'projects', id: string, field: string, value: any) => {
-    const newItems = data[section].map((item: any) => item.id === id ? { ...item, [field]: value } : item);
+    const newItems = (data[section] || []).map((item: any) => item.id === id ? { ...item, [field]: value } : item);
     const newData = { ...data, [section]: newItems };
     onChange(newData);
     debouncedAutoSave(newData);
@@ -216,14 +214,14 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
       <header className="flex items-center justify-between sticky top-0 bg-background/80 backdrop-blur-md z-30 py-4 -mx-4 px-4 border-b mb-4">
         <div>
           <h1 className="text-2xl font-bold font-headline text-primary">Build Your Portfolio</h1>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Auto-sync enabled</p>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Cloud sync active</p>
         </div>
         <div className={cn(
           "flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all duration-300",
           isAutoSaving ? "bg-amber-500/10 text-amber-500" : "bg-emerald-500/10 text-emerald-500"
         )}>
           {isAutoSaving ? (
-            <><CloudUpload size={12} className="animate-bounce" /> Saving...</>
+            <><CloudUpload size={12} className="animate-bounce" /> Syncing...</>
           ) : (
             <><Check size={12} /> Cloud Synced</>
           )}
@@ -300,11 +298,11 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
                 onClick={() => handleManualSave('About Me', 'aboutMe')}
                 className="gap-2"
               >
-                <Save size={18} /> Save
+                <Save size={18} /> Save Section
               </Button>
             </div>
             {data.aboutMe.generatedContent && (
-              <div className="space-y-2">
+              <div className="space-y-2 pt-4">
                 <label className="text-sm font-medium text-primary flex items-center gap-2">
                   <CheckCircle2 size={14} /> AI Result
                 </label>
@@ -331,7 +329,7 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
           </AccordionTrigger>
           <AccordionContent className="space-y-6 pt-4 pb-6">
             {data.education.map((edu) => (
-              <Card key={edu.id} className="relative group">
+              <Card key={edu.id} className="relative group border-primary/10">
                 <Button 
                   variant="ghost" size="icon" 
                   className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -376,7 +374,7 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
                 <Plus size={18} className="mr-2" /> Add Education
               </Button>
               <Button onClick={() => handleManualSave('Education', 'education')} className="gap-2">
-                <Save size={18} /> Save
+                <Save size={18} /> Save Section
               </Button>
             </div>
           </AccordionContent>
@@ -394,7 +392,7 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
           </AccordionTrigger>
           <AccordionContent className="space-y-6 pt-4 pb-6">
             {data.experience.map((exp) => (
-              <Card key={exp.id} className="relative group">
+              <Card key={exp.id} className="relative group border-primary/10">
                 <Button 
                   variant="ghost" size="icon" 
                   className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -433,7 +431,7 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
                 <Plus size={18} className="mr-2" /> Add Experience
               </Button>
               <Button onClick={() => handleManualSave('Work Experience', 'experience')} className="gap-2">
-                <Save size={18} /> Save
+                <Save size={18} /> Save Section
               </Button>
             </div>
           </AccordionContent>
@@ -450,8 +448,8 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
             </div>
           </AccordionTrigger>
           <AccordionContent className="space-y-6 pt-4 pb-6">
-            {data.projects.map((proj) => (
-              <Card key={proj.id} className="relative group">
+            {data.projects && data.projects.map((proj) => (
+              <Card key={proj.id} className="relative group border-accent/20">
                 <Button 
                   variant="ghost" size="icon" 
                   className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -492,7 +490,7 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
                 <Plus size={18} className="mr-2" /> Add Project
               </Button>
               <Button onClick={() => handleManualSave('Projects', 'projects')} className="gap-2">
-                <Save size={18} /> Save
+                <Save size={18} /> Save Section
               </Button>
             </div>
           </AccordionContent>
@@ -511,9 +509,9 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
           <AccordionContent className="space-y-6 pt-4 pb-6">
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Technical Skills (Enter separated by commas)</label>
+                <label className="text-sm font-medium">Technical Skills (Comma separated)</label>
                 <Textarea 
-                  placeholder="e.g. Python, Machine Learning, Cybersecurity" 
+                  placeholder="e.g. Python, Machine Learning, Quickbooks" 
                   value={data.skills.technical.join(', ')}
                   onChange={(e) => updateField('skills', 'technical', e.target.value.split(',').map(s => s.trim()).filter(s => s))}
                 />
@@ -521,7 +519,7 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Tools & Technologies</label>
                 <Textarea 
-                  placeholder="e.g. Docker, Git, VS Code" 
+                  placeholder="e.g. Excel, Docker, SAP" 
                   value={data.skills.tools.join(', ')}
                   onChange={(e) => updateField('skills', 'tools', e.target.value.split(',').map(s => s.trim()).filter(s => s))}
                 />
@@ -529,7 +527,7 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Professional / Soft Skills</label>
                 <Textarea 
-                  placeholder="e.g. Leadership, Communication, Problem Solving" 
+                  placeholder="e.g. Leadership, Team Motivation" 
                   value={data.skills.soft.join(', ')}
                   onChange={(e) => updateField('skills', 'soft', e.target.value.split(',').map(s => s.trim()).filter(s => s))}
                 />
@@ -566,8 +564,8 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
                 <Input value={data.contact.github} onChange={(e) => updateField('contact', 'github', e.target.value)} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Other Relevant Links</label>
-                <Input value={data.contact.other} onChange={(e) => updateField('contact', 'other', e.target.value)} />
+                <label className="text-sm font-medium">Other Link</label>
+                <Input value={data.contact.other || ''} onChange={(e) => updateField('contact', 'other', e.target.value)} />
               </div>
             </div>
             <Button onClick={() => handleManualSave('Contact Info', 'contact')} className="w-full gap-2">
@@ -577,7 +575,7 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
         </AccordionItem>
       </Accordion>
 
-      <div className="sticky bottom-6 flex gap-4">
+      <div className="sticky bottom-6 flex gap-4 pt-4">
         <Button 
           onClick={handleRefineExperience} 
           disabled={isRefiningExperience}
