@@ -1,0 +1,94 @@
+{
+  "entities": {
+    "Portfolio": {
+      "title": "Portfolio",
+      "description": "User's professional portfolio data including experience, education, and skills.",
+      "type": "object",
+      "properties": {
+        "aboutMe": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "currentRole": { "type": "string" },
+            "interests": { "type": "string" },
+            "shortTermGoal": { "type": "string" },
+            "longTermGoal": { "type": "string" },
+            "generatedContent": { "type": "string" }
+          }
+        },
+        "education": {
+          "type": "array",
+          "items": { "$ref": "#/entities/Education" }
+        },
+        "experience": {
+          "type": "array",
+          "items": { "$ref": "#/entities/WorkExperience" }
+        },
+        "projects": {
+          "type": "array",
+          "items": { "$ref": "#/entities/Project" }
+        },
+        "skills": {
+          "type": "object",
+          "properties": {
+            "technical": { "type": "array", "items": { "type": "string" } },
+            "tools": { "type": "array", "items": { "type": "string" } },
+            "soft": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "contact": {
+          "type": "object",
+          "properties": {
+            "email": { "type": "string" },
+            "linkedIn": { "type": "string" },
+            "github": { "type": "string" }
+          }
+        }
+      }
+    },
+    "Education": {
+      "title": "Education",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "degreeName": { "type": "string" },
+        "institutionName": { "type": "string" },
+        "completionDate": { "type": "string" },
+        "coursework": { "type": "string" }
+      }
+    },
+    "WorkExperience": {
+      "title": "Work Experience",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "jobTitle": { "type": "string" },
+        "organization": { "type": "string" },
+        "dates": { "type": "string" },
+        "responsibilities": { "type": "string" },
+        "achievement": { "type": "string" }
+      }
+    },
+    "Project": {
+      "title": "Project",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "technologies": { "type": "string" },
+        "skills": { "type": "string" },
+        "link": { "type": "string" }
+      }
+    }
+  },
+  "auth": {
+    "providers": ["google.com"]
+  },
+  "firestore": {
+    "/portfolios/{portfolioId}": {
+      "schema": "Portfolio",
+      "description": "User portfolios"
+    }
+  }
+}

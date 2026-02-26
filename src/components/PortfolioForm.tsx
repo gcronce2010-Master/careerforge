@@ -1,22 +1,25 @@
+
 "use client";
 
 import React, { useState } from 'react';
 import { 
   User, GraduationCap, Award, Briefcase, 
   Code2, FolderGit2, Mail, Sparkles, Plus, Trash2, 
-  ChevronRight, ChevronDown, CheckCircle2, Wand2, Download
+  CheckCircle2, Wand2, Save
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { PortfolioData, Education, Certification, WorkExperience, Project } from '@/lib/types';
+import { PortfolioData } from '@/lib/types';
 import { generateAboutMeSection } from '@/ai/flows/generate-about-me-section';
 import { refineExperienceAndProjects } from '@/ai/flows/refine-experience-and-projects';
 import { useToast } from '@/hooks/use-toast';
+import { useFirestore } from '@/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 interface PortfolioFormProps {
   data: PortfolioData;
@@ -25,6 +28,7 @@ interface PortfolioFormProps {
 
 export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
   const { toast } = useToast();
+  const db = useFirestore();
   const [isGeneratingAboutMe, setIsGeneratingAboutMe] = useState(false);
   const [isRefiningExperience, setIsRefiningExperience] = useState(false);
 
@@ -35,6 +39,28 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
         ...(data[section] as any),
         [field]: value,
       },
+    });
+  };
+
+  const handleSaveSection = (sectionName: string, sectionKey: keyof PortfolioData) => {
+    if (!db) return;
+    
+    const docRef = doc(db, 'portfolios', 'user-portfolio');
+    const updateData = { [sectionKey]: data[sectionKey] };
+
+    setDoc(docRef, updateData, { merge: true })
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'update',
+          requestResourceData: updateData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      });
+
+    toast({
+      title: `${sectionName} Saved`,
+      description: "Your changes have been saved to the cloud.",
     });
   };
 
@@ -160,7 +186,7 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
         {/* About Me */}
         <AccordionItem value="about" className="border rounded-xl bg-card px-4">
           <AccordionTrigger className="hover:no-underline">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 text-left">
               <div className="p-2 rounded-lg bg-primary/10 text-primary">
                 <User size={20} />
               </div>
@@ -212,14 +238,21 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
                 />
               </div>
             </div>
-            <div className="pt-2">
+            <div className="flex gap-2 pt-2">
               <Button 
                 onClick={handleGenerateAboutMe} 
                 disabled={isGeneratingAboutMe}
-                className="w-full bg-accent hover:bg-accent/90 text-white font-semibold gap-2"
+                className="flex-1 bg-accent hover:bg-accent/90 text-white font-semibold gap-2"
               >
                 {isGeneratingAboutMe ? <Sparkles className="animate-pulse" /> : <Wand2 size={18} />}
-                {isGeneratingAboutMe ? "Crafting Bio..." : "AI Generate 'About Me'"}
+                {isGeneratingAboutMe ? "Crafting Bio..." : "AI Generate Bio"}
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => handleSaveSection('About Me', 'aboutMe')}
+                className="gap-2"
+              >
+                <Save size={18} /> Save
               </Button>
             </div>
             {data.aboutMe.generatedContent && (
@@ -241,7 +274,7 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
         {/* Education */}
         <AccordionItem value="education" className="border rounded-xl bg-card px-4">
           <AccordionTrigger className="hover:no-underline">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 text-left">
               <div className="p-2 rounded-lg bg-primary/10 text-primary">
                 <GraduationCap size={20} />
               </div>
@@ -290,16 +323,21 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
                 </CardContent>
               </Card>
             ))}
-            <Button variant="outline" onClick={() => addItem('education')} className="w-full border-dashed">
-              <Plus size={18} className="mr-2" /> Add Education
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => addItem('education')} className="flex-1 border-dashed">
+                <Plus size={18} className="mr-2" /> Add Education
+              </Button>
+              <Button onClick={() => handleSaveSection('Education', 'education')} className="gap-2">
+                <Save size={18} /> Save Education
+              </Button>
+            </div>
           </AccordionContent>
         </AccordionItem>
 
         {/* Work Experience */}
         <AccordionItem value="experience" className="border rounded-xl bg-card px-4">
           <AccordionTrigger className="hover:no-underline">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 text-left">
               <div className="p-2 rounded-lg bg-primary/10 text-primary">
                 <Briefcase size={20} />
               </div>
@@ -342,16 +380,21 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
                 </CardContent>
               </Card>
             ))}
-            <Button variant="outline" onClick={() => addItem('experience')} className="w-full border-dashed">
-              <Plus size={18} className="mr-2" /> Add Experience
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => addItem('experience')} className="flex-1 border-dashed">
+                <Plus size={18} className="mr-2" /> Add Experience
+              </Button>
+              <Button onClick={() => handleSaveSection('Work Experience', 'experience')} className="gap-2">
+                <Save size={18} /> Save Experience
+              </Button>
+            </div>
           </AccordionContent>
         </AccordionItem>
 
         {/* Projects */}
         <AccordionItem value="projects" className="border rounded-xl bg-card px-4">
           <AccordionTrigger className="hover:no-underline">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 text-left">
               <div className="p-2 rounded-lg bg-primary/10 text-primary">
                 <FolderGit2 size={20} />
               </div>
@@ -396,16 +439,21 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
                 </CardContent>
               </Card>
             ))}
-            <Button variant="outline" onClick={() => addItem('projects')} className="w-full border-dashed">
-              <Plus size={18} className="mr-2" /> Add Project
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => addItem('projects')} className="flex-1 border-dashed">
+                <Plus size={18} className="mr-2" /> Add Project
+              </Button>
+              <Button onClick={() => handleSaveSection('Projects', 'projects')} className="gap-2">
+                <Save size={18} /> Save Projects
+              </Button>
+            </div>
           </AccordionContent>
         </AccordionItem>
 
         {/* Skills */}
         <AccordionItem value="skills" className="border rounded-xl bg-card px-4">
           <AccordionTrigger className="hover:no-underline">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 text-left">
               <div className="p-2 rounded-lg bg-primary/10 text-primary">
                 <Code2 size={20} />
               </div>
@@ -438,6 +486,9 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
                   onChange={(e) => updateField('skills', 'soft', e.target.value.split(',').map(s => s.trim()).filter(s => s))}
                 />
               </div>
+              <Button onClick={() => handleSaveSection('Skills', 'skills')} className="w-full gap-2">
+                <Save size={18} /> Save Skills
+              </Button>
             </div>
           </AccordionContent>
         </AccordionItem>
@@ -445,7 +496,7 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
         {/* Contact */}
         <AccordionItem value="contact" className="border rounded-xl bg-card px-4">
           <AccordionTrigger className="hover:no-underline">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 text-left">
               <div className="p-2 rounded-lg bg-primary/10 text-primary">
                 <Mail size={20} />
               </div>
@@ -471,6 +522,9 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
                 <Input value={data.contact.other} onChange={(e) => updateField('contact', 'other', e.target.value)} />
               </div>
             </div>
+            <Button onClick={() => handleSaveSection('Contact Info', 'contact')} className="w-full gap-2">
+              <Save size={18} /> Save Contact Info
+            </Button>
           </AccordionContent>
         </AccordionItem>
       </Accordion>
