@@ -1,11 +1,10 @@
-
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { 
   User, GraduationCap, Award, Briefcase, 
   Code2, FolderGit2, Mail, Sparkles, Plus, Trash2, 
-  CheckCircle2, Wand2, Save
+  CheckCircle2, Wand2, Save, CloudUpload, Check
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +19,7 @@ import { useFirestore } from '@/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { cn } from '@/lib/utils';
 
 interface PortfolioFormProps {
   data: PortfolioData;
@@ -31,18 +31,47 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
   const db = useFirestore();
   const [isGeneratingAboutMe, setIsGeneratingAboutMe] = useState(false);
   const [isRefiningExperience, setIsRefiningExperience] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Debounced auto-save function
+  const debouncedAutoSave = useCallback((newData: PortfolioData) => {
+    setIsAutoSaving(true);
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+
+    saveTimeoutRef.current = setTimeout(() => {
+      if (!db) return;
+      const docRef = doc(db, 'portfolios', 'user-portfolio');
+      
+      setDoc(docRef, newData, { merge: true })
+        .then(() => {
+          setIsAutoSaving(false);
+        })
+        .catch(async (error) => {
+          setIsAutoSaving(false);
+          const permissionError = new FirestorePermissionError({
+            path: docRef.path,
+            operation: 'write',
+            requestResourceData: newData,
+          });
+          errorEmitter.emit('permission-error', permissionError);
+        });
+    }, 1500); // Save 1.5 seconds after the user stops typing
+  }, [db]);
 
   const updateField = (section: keyof PortfolioData, field: string, value: any) => {
-    onChange({
+    const newData = {
       ...data,
       [section]: {
         ...(data[section] as any),
         [field]: value,
       },
-    });
+    };
+    onChange(newData);
+    debouncedAutoSave(newData);
   };
 
-  const handleSaveSection = (sectionName: string, sectionKey: keyof PortfolioData) => {
+  const handleManualSave = (sectionName: string, sectionKey: keyof PortfolioData) => {
     if (!db) return;
     
     const docRef = doc(db, 'portfolios', 'user-portfolio');
@@ -60,7 +89,7 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
 
     toast({
       title: `${sectionName} Saved`,
-      description: "Your changes have been saved to the cloud.",
+      description: "Changes captured to cloud.",
     });
   };
 
@@ -117,7 +146,7 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
           projectPurposeProblemSolved: proj.description,
           toolsOrTechnologiesUsed: proj.technologies,
           skillsDemonstrated: proj.skills,
-          projectLink: proj.link,
+          projectLink: proj.link || '',
         })),
       });
 
@@ -132,11 +161,14 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
         refinedDescription: result.refinedProjects[idx]?.refinedProjectDescription,
       }));
 
-      onChange({
+      const finalData = {
         ...data,
         experience: updatedExp,
         projects: updatedProj,
-      });
+      };
+
+      onChange(finalData);
+      debouncedAutoSave(finalData);
 
       toast({
         title: "Content Refined",
@@ -161,24 +193,40 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
     else if (section === 'experience') newItems.push({ id, jobTitle: '', organization: '', dates: '', responsibilities: '', achievement: '' });
     else if (section === 'projects') newItems.push({ id, title: '', description: '', technologies: '', skills: '', link: '' });
     
-    onChange({ ...data, [section]: newItems });
+    const newData = { ...data, [section]: newItems };
+    onChange(newData);
+    debouncedAutoSave(newData);
   };
 
   const removeItem = (section: 'education' | 'certifications' | 'experience' | 'projects', id: string) => {
-    onChange({ ...data, [section]: data[section].filter((item: any) => item.id !== id) });
+    const newData = { ...data, [section]: data[section].filter((item: any) => item.id !== id) };
+    onChange(newData);
+    debouncedAutoSave(newData);
   };
 
   const updateItem = (section: 'education' | 'certifications' | 'experience' | 'projects', id: string, field: string, value: any) => {
     const newItems = data[section].map((item: any) => item.id === id ? { ...item, [field]: value } : item);
-    onChange({ ...data, [section]: newItems });
+    const newData = { ...data, [section]: newItems };
+    onChange(newData);
+    debouncedAutoSave(newData);
   };
 
   return (
-    <div className="space-y-6 pb-20">
-      <header className="flex items-center justify-between">
+    <div className="space-y-6 pb-20 relative">
+      <header className="flex items-center justify-between sticky top-0 bg-background/80 backdrop-blur-md z-30 py-4 -mx-4 px-4 border-b mb-4">
         <div>
-          <h1 className="text-3xl font-bold font-headline text-primary">Build Your Portfolio</h1>
-          <p className="text-muted-foreground mt-1">Guided professional branding with AI.</p>
+          <h1 className="text-2xl font-bold font-headline text-primary">Build Your Portfolio</h1>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Auto-sync enabled</p>
+        </div>
+        <div className={cn(
+          "flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all duration-300",
+          isAutoSaving ? "bg-amber-500/10 text-amber-500" : "bg-emerald-500/10 text-emerald-500"
+        )}>
+          {isAutoSaving ? (
+            <><CloudUpload size={12} className="animate-bounce" /> Saving...</>
+          ) : (
+            <><Check size={12} /> Cloud Synced</>
+          )}
         </div>
       </header>
 
@@ -249,7 +297,7 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
               </Button>
               <Button 
                 variant="outline"
-                onClick={() => handleSaveSection('About Me', 'aboutMe')}
+                onClick={() => handleManualSave('About Me', 'aboutMe')}
                 className="gap-2"
               >
                 <Save size={18} /> Save
@@ -327,8 +375,8 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
               <Button variant="outline" onClick={() => addItem('education')} className="flex-1 border-dashed">
                 <Plus size={18} className="mr-2" /> Add Education
               </Button>
-              <Button onClick={() => handleSaveSection('Education', 'education')} className="gap-2">
-                <Save size={18} /> Save Education
+              <Button onClick={() => handleManualSave('Education', 'education')} className="gap-2">
+                <Save size={18} /> Save
               </Button>
             </div>
           </AccordionContent>
@@ -384,8 +432,8 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
               <Button variant="outline" onClick={() => addItem('experience')} className="flex-1 border-dashed">
                 <Plus size={18} className="mr-2" /> Add Experience
               </Button>
-              <Button onClick={() => handleSaveSection('Work Experience', 'experience')} className="gap-2">
-                <Save size={18} /> Save Experience
+              <Button onClick={() => handleManualSave('Work Experience', 'experience')} className="gap-2">
+                <Save size={18} /> Save
               </Button>
             </div>
           </AccordionContent>
@@ -443,8 +491,8 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
               <Button variant="outline" onClick={() => addItem('projects')} className="flex-1 border-dashed">
                 <Plus size={18} className="mr-2" /> Add Project
               </Button>
-              <Button onClick={() => handleSaveSection('Projects', 'projects')} className="gap-2">
-                <Save size={18} /> Save Projects
+              <Button onClick={() => handleManualSave('Projects', 'projects')} className="gap-2">
+                <Save size={18} /> Save
               </Button>
             </div>
           </AccordionContent>
@@ -486,7 +534,7 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
                   onChange={(e) => updateField('skills', 'soft', e.target.value.split(',').map(s => s.trim()).filter(s => s))}
                 />
               </div>
-              <Button onClick={() => handleSaveSection('Skills', 'skills')} className="w-full gap-2">
+              <Button onClick={() => handleManualSave('Skills', 'skills')} className="w-full gap-2">
                 <Save size={18} /> Save Skills
               </Button>
             </div>
@@ -522,7 +570,7 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
                 <Input value={data.contact.other} onChange={(e) => updateField('contact', 'other', e.target.value)} />
               </div>
             </div>
-            <Button onClick={() => handleSaveSection('Contact Info', 'contact')} className="w-full gap-2">
+            <Button onClick={() => handleManualSave('Contact Info', 'contact')} className="w-full gap-2">
               <Save size={18} /> Save Contact Info
             </Button>
           </AccordionContent>
