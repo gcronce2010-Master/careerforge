@@ -5,7 +5,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import { 
   User, GraduationCap, Briefcase, 
   Code2, FolderGit2, Mail, Sparkles, Plus, Trash2, 
-  CheckCircle2, Wand2, Save, CloudUpload, Check
+  CheckCircle2, Wand2, Save, CloudUpload, Check, Award
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -89,6 +89,26 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
           path: docRef.path,
           operation: 'update',
           requestResourceData: updateData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      });
+  };
+
+  const handleSaveAll = () => {
+    if (!db) return;
+    const docRef = doc(db, 'portfolios', 'user-portfolio');
+    setDoc(docRef, data, { merge: true })
+      .then(() => {
+        toast({
+          title: "All Content Saved",
+          description: "Your entire portfolio has been synced to the cloud.",
+        });
+      })
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'write',
+          requestResourceData: data,
         });
         errorEmitter.emit('permission-error', permissionError);
       });
@@ -387,6 +407,62 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
           </AccordionContent>
         </AccordionItem>
 
+        {/* Certifications */}
+        <AccordionItem value="certifications" className="border rounded-xl bg-card px-4">
+          <AccordionTrigger className="hover:no-underline">
+            <div className="flex items-center gap-3 text-left">
+              <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                <Award size={20} />
+              </div>
+              <span className="font-semibold text-lg">Certifications</span>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="space-y-6 pt-4 pb-6">
+            {(data.certifications || []).map((cert) => (
+              <Card key={cert.id} className="relative group border-primary/10">
+                <Button 
+                  variant="ghost" size="icon" 
+                  className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => removeItem('certifications', cert.id)}
+                >
+                  <Trash2 size={16} className="text-destructive" />
+                </Button>
+                <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Certification Name</label>
+                    <Input 
+                      value={cert.name} 
+                      onChange={(e) => updateItem('certifications', cert.id, 'name', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Issuing Organization</label>
+                    <Input 
+                      value={cert.organization} 
+                      onChange={(e) => updateItem('certifications', cert.id, 'organization', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Year Obtained</label>
+                    <Input 
+                      value={cert.year} 
+                      onChange={(e) => updateItem('certifications', cert.id, 'year', e.target.value)}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => addItem('certifications')} className="flex-1 border-dashed">
+                <Plus size={18} className="mr-2" /> Add Certification
+              </Button>
+              <Button onClick={() => handleManualSave('Certifications', 'certifications')} className="gap-2">
+                <Save size={18} /> Save Section
+              </Button>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
         {/* Work Experience */}
         <AccordionItem value="experience" className="border rounded-xl bg-card px-4">
           <AccordionTrigger className="hover:no-underline">
@@ -593,7 +669,7 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
         </Button>
         <Button 
           variant="outline"
-          onClick={() => handleManualSave('All Content', 'aboutMe' as any)}
+          onClick={handleSaveAll}
           className="bg-card shadow-xl py-6 rounded-xl font-bold text-base gap-2 px-6"
         >
           <Save size={20} />

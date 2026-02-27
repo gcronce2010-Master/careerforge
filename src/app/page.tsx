@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PortfolioForm } from '@/components/PortfolioForm';
 import { PortfolioPreview } from '@/components/PortfolioPreview';
 import { initialPortfolioData, PortfolioData } from '@/lib/types';
@@ -18,26 +18,27 @@ export default function Home() {
   const docRef = useMemoFirebase(() => (db ? doc(db, 'portfolios', 'user-portfolio') : null), [db]);
   const { data: remoteData, loading: isDocLoading } = useDoc<PortfolioData>(docRef);
 
-  // Load data from Firestore once on mount with deep merging to ensure all keys exist
+  // Load data from Firestore once on mount with deep merging
   useEffect(() => {
-    if (!isDocLoading && remoteData && !isInitialized) {
-      const mergedData: PortfolioData = {
-        ...initialPortfolioData,
-        ...remoteData,
-        aboutMe: { ...initialPortfolioData.aboutMe, ...(remoteData.aboutMe || {}) },
-        skills: { ...initialPortfolioData.skills, ...(remoteData.skills || {}) },
-        contact: { ...initialPortfolioData.contact, ...(remoteData.contact || {}) },
-        education: remoteData.education || [],
-        certifications: remoteData.certifications || [],
-        experience: remoteData.experience || [],
-        projects: remoteData.projects || [],
-      };
-      setPortfolioData(mergedData);
-      setIsInitialized(true);
-    } else if (!isDocLoading && !remoteData && !isInitialized) {
+    // Only proceed once the document reference is established and loading is complete
+    if (docRef && !isDocLoading && !isInitialized) {
+      if (remoteData) {
+        const mergedData: PortfolioData = {
+          ...initialPortfolioData,
+          ...remoteData,
+          aboutMe: { ...initialPortfolioData.aboutMe, ...(remoteData.aboutMe || {}) },
+          skills: { ...initialPortfolioData.skills, ...(remoteData.skills || {}) },
+          contact: { ...initialPortfolioData.contact, ...(remoteData.contact || {}) },
+          education: remoteData.education || initialPortfolioData.education || [],
+          certifications: remoteData.certifications || [],
+          experience: remoteData.experience || initialPortfolioData.experience || [],
+          projects: remoteData.projects || [],
+        };
+        setPortfolioData(mergedData);
+      }
       setIsInitialized(true);
     }
-  }, [remoteData, isDocLoading, isInitialized]);
+  }, [remoteData, isDocLoading, isInitialized, docRef]);
 
   return (
     <main className="min-h-screen bg-background text-foreground overflow-hidden">
