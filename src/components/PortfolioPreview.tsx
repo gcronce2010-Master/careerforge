@@ -1,6 +1,8 @@
+
 "use client";
 
 import React from 'react';
+import Image from 'next/image';
 import { 
   Github, Linkedin, Mail, ExternalLink, Download, 
   ChevronDown, GraduationCap, Award, Briefcase, 
@@ -12,6 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { Card, CardContent } from '@/components/ui/card';
 import { PortfolioData } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 interface PortfolioPreviewProps {
   data: PortfolioData;
@@ -19,6 +22,10 @@ interface PortfolioPreviewProps {
 
 export function PortfolioPreview({ data }: PortfolioPreviewProps) {
   const { toast } = useToast();
+
+  const profilePlaceholder = PlaceHolderImages.find(img => img.id === 'profile-picture');
+  const displayImage = data.aboutMe.profileImage || profilePlaceholder?.imageUrl || "https://picsum.photos/seed/42/400/400";
+  const imageHint = profilePlaceholder?.imageHint || "professional person";
 
   const handleExport = (format: 'md' | 'txt') => {
     let content = `# Portfolio: ${data.aboutMe.name || 'Professional Portfolio'}\n\n`;
@@ -83,42 +90,57 @@ export function PortfolioPreview({ data }: PortfolioPreviewProps) {
       {/* Main Preview Content */}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-8 space-y-16">
         {/* Hero Section */}
-        <section className="space-y-6 pt-8 animate-fade-in">
-          <Badge variant="outline" className="border-primary/30 text-primary py-1 px-3 bg-primary/5 uppercase tracking-widest text-[10px] font-bold">
-            Available for Opportunities
-          </Badge>
-          <div className="space-y-2">
-            <h1 className="text-5xl font-extrabold font-headline leading-tight">
-              {data.aboutMe.name || "Your Name"}
-            </h1>
-            <p className="text-2xl text-primary font-medium tracking-tight">
-              {data.aboutMe.currentRole}
-            </p>
+        <section className="space-y-6 pt-8 animate-fade-in flex flex-col items-start md:flex-row md:items-center md:gap-10">
+          <div className="relative w-32 h-32 md:w-40 md:h-40 rounded-2xl overflow-hidden border-4 border-primary/20 shadow-xl group">
+            <Image 
+              src={displayImage}
+              alt={data.aboutMe.name || "Profile"}
+              fill
+              className="object-cover transition-transform duration-500 group-hover:scale-110"
+              data-ai-hint={imageHint}
+            />
           </div>
           
-          <div className="max-w-2xl text-lg text-muted-foreground leading-relaxed">
+          <div className="flex-1 space-y-4 pt-4 md:pt-0">
+            <Badge variant="outline" className="border-primary/30 text-primary py-1 px-3 bg-primary/5 uppercase tracking-widest text-[10px] font-bold">
+              Available for Opportunities
+            </Badge>
+            <div className="space-y-2">
+              <h1 className="text-4xl md:text-5xl font-extrabold font-headline leading-tight">
+                {data.aboutMe.name || "Your Name"}
+              </h1>
+              <p className="text-xl md:text-2xl text-primary font-medium tracking-tight">
+                {data.aboutMe.currentRole}
+              </p>
+            </div>
+            
+            <div className="flex gap-4 pt-2">
+              {data.contact.linkedIn && (
+                <Button size="icon" variant="secondary" className="rounded-full" asChild>
+                  <a href={data.contact.linkedIn} target="_blank"><Linkedin size={20} /></a>
+                </Button>
+              )}
+              {data.contact.github && (
+                <Button size="icon" variant="secondary" className="rounded-full" asChild>
+                  <a href={data.contact.github} target="_blank"><Github size={20} /></a>
+                </Button>
+              )}
+              {data.contact.email && (
+                <Button size="icon" variant="secondary" className="rounded-full" asChild>
+                  <a href={`mailto:${data.contact.email}`}><Mail size={20} /></a>
+                </Button>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* Bio Section */}
+        <section className="animate-fade-in" style={{ animationDelay: '0.05s' }}>
+          <div className="max-w-3xl text-lg text-muted-foreground leading-relaxed">
             {data.aboutMe.generatedContent ? (
               <p className="whitespace-pre-wrap">{data.aboutMe.generatedContent}</p>
             ) : (
               <p className="italic opacity-60">Fill out the "About Me" section to see your AI-generated professional bio here.</p>
-            )}
-          </div>
-
-          <div className="flex gap-4 pt-4">
-            {data.contact.linkedIn && (
-              <Button size="icon" variant="secondary" className="rounded-full" asChild>
-                <a href={data.contact.linkedIn} target="_blank"><Linkedin size={20} /></a>
-              </Button>
-            )}
-            {data.contact.github && (
-              <Button size="icon" variant="secondary" className="rounded-full" asChild>
-                <a href={data.contact.github} target="_blank"><Github size={20} /></a>
-              </Button>
-            )}
-            {data.contact.email && (
-              <Button size="icon" variant="secondary" className="rounded-full" asChild>
-                <a href={`mailto:${data.contact.email}`}><Mail size={20} /></a>
-              </Button>
             )}
           </div>
         </section>

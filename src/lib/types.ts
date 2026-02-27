@@ -1,3 +1,4 @@
+
 export interface Education {
   id: string;
   degreeName: string;
@@ -43,6 +44,7 @@ export interface PortfolioData {
     shortTermGoal: string;
     longTermGoal: string;
     generatedContent: string;
+    profileImage?: string;
   };
   education: Education[];
   certifications: Certification[];
@@ -69,6 +71,7 @@ export const initialPortfolioData: PortfolioData = {
     shortTermGoal: 'get connected with professionals in AI, tech world',
     longTermGoal: 'find my career after I get my degree in AI',
     generatedContent: '',
+    profileImage: '',
   },
   education: [
     {

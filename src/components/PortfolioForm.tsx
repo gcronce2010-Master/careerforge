@@ -5,7 +5,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import { 
   User, GraduationCap, Briefcase, 
   Code2, FolderGit2, Mail, Sparkles, Plus, Trash2, 
-  CheckCircle2, Wand2, Save, CloudUpload, Check, Award
+  CheckCircle2, Wand2, Save, CloudUpload, Check, Award, Image as ImageIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -284,6 +284,16 @@ export function PortfolioForm({ data, onChange }: PortfolioFormProps) {
                   onChange={(e) => updateField('aboutMe', 'currentRole', e.target.value)}
                 />
               </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium flex items-center gap-2">
+                <ImageIcon size={14} /> Profile Image URL
+              </label>
+              <Input 
+                placeholder="https://example.com/photo.jpg" 
+                value={data.aboutMe.profileImage || ''}
+                onChange={(e) => updateField('aboutMe', 'profileImage', e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Interests (Comma separated)</label>
